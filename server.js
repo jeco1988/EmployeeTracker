@@ -6,9 +6,9 @@ const consoleTable = require("console.table");
 var connection = mysql.createConnection({
   host: "localhost",
   port: 3306,
-  user: "user",
+  user: "root",
   password: "password",
-  database: "employeetracker_db"
+
 });
 
 function updateServer() {
