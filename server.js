@@ -1,266 +1,346 @@
-const mysql = require("mysql2");
 const inquirer = require("inquirer");
-
+const mysql = require("mysql2");
 const consoleTable = require("console.table");
 
-var connection = mysql.createConnection({
+const connection = mysql.createConnection({
   host: "localhost",
   port: 3306,
   user: "root",
   password: "password",
-  database: "employees_DB"
+  database: "employees_db"
 });
 
-function updateServer() {
-    connection.query("SELECT * from department", function(error, res) {
-      alldepartments = res.map(dept => ({ name: dept.name, value: dept.id }));
-    });
-    connection.query("SELECT * from role", function(error, res) {
-        allroles = res.map(role => ({ name: role.title, value: role.id }));
-      });
-    connection.query("SELECT * from employee", function(error, res) {
-      allemployees = res.map(employee => ({
-        name: `${employee.first_name} ${employee.last_name}`,
-        value: employee.id
-      }));
-    });
-  }
-  
-  connection.connect(function(err) {
-    if (err) throw err;
-    console.log("Welcome to the Employee Database");
-    startEmployeeDB();
-    updateServer();
-  });
 
-  // start db
-  function startEmployeeDB() {
-    inquirer
-      .prompt({
-        name: "action",
-        type: "list",
-        message: "Please select:",
-        choices: [
-          "View All Employees",
+
+connection.connect(function(err) {
+  if (err) throw err;
+ 
+  console.log("Connected as ID " + connection.threadId);
+  console.clear();
+  console.log ("");
+  console.log ("   Welcome!   ");
+  console.log ("");
+  runEmployeeDB();
+});
+
+
+// menu selection
+
+function runEmployeeDB() {
+  inquirer.prompt([
+  {
+  type: "list",
+  message: "What would you like to do?",
+  name: "action",
+  choices: [
+          "View All Employees", 
           "View All Departments",
           "View All Roles",
-          "Add Employee",
+          "View All Employees by Department",
+          "View All Employees by Role",
           "Add Department",
           "Add Role",
+          "Add Employee",
           "Update Employee Role",
           "Exit"
-        ]
-      })
-      .then(function(answer) {
-        switch (answer.action) {
+          ]
+  }
+]).then(function(answers) {
+      switch (answers.action) {
           case "View All Employees":
-            viewAllEmployees();
-            break;
+              viewAllEmployees();
+          break;
           case "View All Departments":
-            viewAllDepartments();
-            break;
+              viewAllDepts();
+          break;
           case "View All Roles":
-            viewAllRoles();
-            break;
-          case "Add Employee":
-            addEmployee();
-            break;
+              viewAllRoles();
+          break;
+          case "View All Employees by Department":
+              viewEmployeesByDept();
+          break;
+          case "View All Employees by Role":
+              viewEmployeesByRole();
+          break;
           case "Add Department":
-            addDepartment();
-            break;
+              addDept();
+          break;
           case "Add Role":
-            addRole();
-            break;
+              addRole();
+          break;
+          case "Add Employee":
+              addEmployee();
+          break;
           case "Update Employee Role":
-            updateEmployeeRole();
-            break;
+              updateEmployeeRole();
+          break;
           case "Exit":
-            connection.end();
-            break;
-          case "Exit":
-                console.log ("Goodbye!");
-                connection.end();
-            break;
-        }
-      });
-  }
 
-  // view employees
-  function viewAllEmployees() {
-    console.log("   ");
-    var query =
-      "SELECT employee.id, first_name AS firstname, last_name AS lastname, title AS role, name AS department, salary as salary FROM employee INNER JOIN role ON employee.role_id = role.id INNER JOIN department ON role.department_id = department.id;";
-    connection.query(query, function(err, res) {
-      if (err) throw err;
-      console.table(res);
-      startEmployeeDB();
-    });
-  }
-  
-  // view departments
-  function viewAllDepartments() {
-    console.log("   ");
-    var query = "SELECT id, name AS department FROM department";
-    connection.query(query, function(err, res) {
-      if (err) throw err;
-      console.table(res);
-      startEmployeeDB();
-    });
-  }
-  
-  // view roles
-  function viewAllRoles() {
-    console.log("   ");
-    var query =
-      "SELECT r.id, title AS role, salary, name AS department FROM role r LEFT JOIN department d ON department_id = d.id";
-    connection.query(query, function(err, res) {
-      if (err) throw err;
-      console.table(res);
-      startEmployeeDB();
-    });
-  }
-  
-  // adding employees
-  function addEmployee() {
-    updateServer();
-    inquirer
-      .prompt([
-        {
-          type: "input",
-          name: "first_name",
-          message: "Please enter first name."
-        },
-        {
-          type: "input",
-          name: "last_name",
-          message: "Please enter last name."
-        },
-        {
-          name: "role",
-          type: "list",
-          message: "Please enter role.",
-          choices: allroles
-        }
-      ])
-      .then(function(answer) {
-        var query = connection.query(
-          "INSERT INTO employee SET ?",
-          {
-            first_name: answer.first_name,
-            last_name: answer.last_name,
-            role_id: answer.role
-          },
-          function(err, res) {
-            if (err) throw err;
-            console.table("New employee added.");
-            startEmployeeDB();
+              console.log ("");
+              console.log ("   Goodbye!   ");
+              console.log ("");
+              connection.end();
+          break;
           }
-        );
-      });
-  }
+  })
+};
 
-  // adding departments
-  function addDepartment() {
-    updateServer();
-    inquirer
-      .prompt([
-        {
+// view employees
+function viewAllEmployees() {
+  
+  connection.query("SELECT employees.firstName AS First_Name, employees.lastName AS Last_Name, role.title AS Title, role.salary AS Salary, department.name AS Department, CONCAT(e.firstName, ' ' ,e.lastName) AS Manager FROM employees INNER JOIN role on role.id = employees.roleID INNER JOIN department on department.id = role.departmentID LEFT JOIN employees e on employees.managerID = e.id;", 
+  function(err, res) {
+    if (err) throw err
+    console.log ("");
+    console.log("* Employee list *");
+    console.log ("");
+    console.table(res)
+    runEmployeeDB()
+})
+}
+
+// view departments
+function viewAllDepts() {
+  connection.query("SELECT department.id AS ID, department.name AS Department FROM department",
+  function(err, res) {
+    if (err) throw err
+    console.log("")
+    console.log("* Department list *")
+    console.log("")
+    console.table(res)
+    runEmployeeDB()
+})
+}
+
+// view roles
+function viewAllRoles() {
+  connection.query("SELECT role.id AS Dept_ID, role.title AS Title FROM role",
+  function(err, res) {
+    if (err) throw err
+    console.log("")
+    console.log("* Role list *")
+    console.log("")
+    console.table(res)
+    runEmployeeDB()
+})
+}
+
+// employees by department
+function viewEmployeesByDept() {
+connection.query("SELECT employees.firstName AS First_Name, employees.lastName AS Last_Name, department.name AS Department FROM employees JOIN role ON employees.roleID = role.id JOIN department ON role.departmentID = department.id ORDER BY department.id;", 
+function(err, res) {
+  if (err) throw err
+  console.log ("");
+  console.log("* Employees list by department *")
+  console.log ("");
+  console.table(res)
+  runEmployeeDB()
+})
+}
+
+// employees by role
+function viewEmployeesByRole() {
+connection.query("SELECT employees.firstName AS First_Name, employees.lastName AS Last_Name, role.title AS Title FROM employees JOIN role ON employees.roleID = role.id ORDER BY role.id", 
+function(err, res) {
+if (err) throw err
+console.log ("");
+console.log("* Employees list by role *")
+console.log ("");
+console.table(res)
+runEmployeeDB()
+})
+}
+
+// array for employee addition
+let roleArr = [];                                            
+function selectRole() {
+connection.query("SELECT * FROM role", function(err, res) {
+  if (err) throw err
+  for (var i = 0; i < res.length; i++) {
+    roleArr.push(res[i].title);
+  }
+})
+return roleArr;
+}
+
+// manager array for employee addition
+let managersArr = [];
+function selectManager() {
+connection.query("SELECT firstName, lastName FROM employees", function(err, res) {
+  if (err) throw err
+  for (var i = 0; i < res.length; i++) {
+    managersArr.push(res[i].firstName);
+  }
+})
+return managersArr;
+}
+
+// department array
+var deptArr = [];
+function selectDepartment() {
+connection.query("SELECT * FROM department", function(err, res) {
+  if (err) throw err
+  for (var i = 0; i < res.length; i++) {
+    deptArr.push(res[i].name);
+  }
+})
+return deptArr;
+}
+
+
+// add new employee
+function addEmployee() { 
+  inquirer.prompt([
+      {
+        name: "firstName",
+        type: "input",
+        message: "First Name: "
+      },
+      {
+        name: "lastName",
+        type: "input",
+        message: "Last Name: "
+      },
+      {
+        name: "role",
+        type: "list",
+        message: "What is the new employee's role title? ",
+        choices: selectRole()
+      },
+      {
+          name: "choice",
+          type: "rawlist",
+          message: "Who is the new employee's manager? ",
+          choices: selectManager()
+      }
+
+  ]).then(function (answers) {
+    var roleId = selectRole().indexOf(answers.role) + 1
+    var managerId = selectManager().indexOf(answers.choice) + 1
+    connection.query("INSERT INTO employees SET ?", 
+    {
+        firstName: answers.firstName,
+        lastName: answers.lastName,
+        managerID: managerId,
+        roleID: roleId
+        
+    }, 
+    function(err){
+        if (err) throw err
+        console.table(answers)
+        runEmployeeDB()
+    })
+
+})
+}
+// update employee role
+function updateEmployeeRole() {
+  connection.query("SELECT employees.lastName, role.title FROM employees JOIN role ON employees.roleID = role.id;", 
+  (err, res) => {
+          if (err) throw err;
+
+          inquirer.prompt([
+              {
+                  name: "lastName",
+                  type: "rawlist",
+                  choices: function () {
+                      var lastName = [];
+                      for (var i = 0; i < res.length; i++) {
+                          lastName.push(res[i].lastName);
+                      }
+                      return lastName;
+                  },
+                  message: "What is the employee's last name? ",
+              },
+              {
+                  name: "role",
+                  type: "rawlist",
+                  message: "What is the employee's new role title? ",
+                  choices: selectRole()
+              },
+          ]).then(function (answers) {
+              var roleId = selectRole().indexOf(answers.role) + 1;
+              connection.query("UPDATE employees SET WHERE ?",
+                  {
+                      lastName: answers.lastName,
+                      roleID: roleId
+                  },
+      
+                  function (err) {
+                      if (err)
+                          throw err;
+                      console.table(answers);
+                      runEmployeeDB();
+                  });
+          });
+      });
+}
+
+// add department
+function addDept() { 
+
+  inquirer.prompt([
+      {
+        name: "name",
+        type: "input",
+        message: "Which Department would you like to add? "
+      },
+      {
+          name: "id",
           type: "input",
-          name: "new_department",
-          message: "Which department do you want to add?"
+          message: "What is the new Department ID? "
         }
-      ])
-      .then(function(answer) {
-        var query = connection.query(
-          "INSERT INTO department SET ?",
-          {
-            name: answer.new_department
-          },
-          function(err, res) {
-            if (err) throw err;
-            console.table("New department added.");
-            updateServer();
-            startEmployeeDB();
-          }
-        );
-      });
-  }
 
-  // adding roles
-  function addRole() {
-    updateServer();
-    inquirer
-      .prompt([
+  ]).then(function(answers) {
+      connection.query("INSERT INTO department SET ? ",
+          {
+            name: answers.name,
+            id: answers.id
+          },
+          function(err) {
+              if (err) throw err
+              console.table(res);
+              runEmployeeDB();
+          }
+      )
+  })
+}
+
+// add role
+function addRole() { 
+  connection.query("SELECT role.title AS Title, role.salary AS Salary FROM role LEFT JOIN department.name AS Department FROM department;",   function(err, res) {
+    inquirer.prompt([
         {
+          name: "title",
           type: "input",
-          name: "new_role",
-          message: "Which role do you want to add?"
+          message: "What is name of the new role?"
         },
         {
+          name: "salary",
           type: "input",
-          name: "new_salary",
-          message: "What is the role's salary?"
-        },
+          message: "What is the salary of the new role?"
+        } ,
         {
           name: "department",
-          type: "list",
-          message: "Please enter the department the role belongs to.",
-          choices: alldepartments
+          type: "rawlist",
+          message: "Under which department does this new role fall?",
+          choices: selectDepartment()
         }
-      ])
-      .then(function(answer) {
-        var query = connection.query(
-          "INSERT INTO role SET ?",
-          {
-            title: answer.new_role,
-            salary: answer.new_salary,
-            department_id: answer.department
-          },
-          function(err, res) {
-            if (err) throw err;
-            console.table("New role added.");
-            updateServer();
-            startEmployeeDB();
-          }
-        );
-      });
-  }
-
-  // updating employee's role
-  function updateEmployeeRole() {
-    updateServer();
-    inquirer
-      .prompt([
-        {
-          name: "employee",
-          type: "list",
-          message: "Which employee would you like to update?",
-          choices: allemployees
-        },
-        {
-          name: "role",
-          type: "list",
-          message: "What is the role of the employee?",
-          choices: allroles
-        }
-      ])
-      .then(function(answer) {
-        var query = connection.query(
-          "UPDATE employee SET ? WHERE ?",
-          [
+    ]).then(function(answers) {
+        var deptId = selectDepartment().indexOf(answers.choice) + 1
+        connection.query(
+            "INSERT INTO role SET ?",
             {
-              role_id: answer.role
+              title: answers.title,
+              salary: answers.salary,
+              departmentID: deptId
             },
-            {
-              id: answer.employee
+            function(err) {
+                if (err) throw err
+                console.table(answers);
+                runEmployeeDB();
             }
-          ],
-          function(err, res) {
-            if (err) throw err;
-            console.table("Employee role updated.");
-            updateServer();
-            startEmployeeDB();
-          }
-        );
-      });
-  }
+        )     
+    });
+  });
+};
